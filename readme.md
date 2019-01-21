@@ -1,8 +1,11 @@
 ![Plastic Logo](http://i.imgur.com/PyolY7g.png)
 
+> Forked from sleimanx2/plastic
+> This is just a fork to address a PlasticPaginator bug in v0.3.1 solved in latest versions but only for PHP >= 7.0.0.
+> just intended to be used in PHP 5.6.* and keep adding functionality of latest versions for older versions PHP and ElasticSearch.
 > Plastic is an Elasticsearch ODM and mapper for Laravel. It renders the developer experience more enjoyable while using Elasticsearch, by providing a fluent syntax for mapping, querying, and storing eloquent models.
 
-[![License](https://poser.pugx.org/laravel/framework/license.svg)](https://packagist.org/packages/sleimanx2/plastic) [![Build Status](https://travis-ci.org/sleimanx2/plastic.svg?branch=master&&refresh=2)](https://travis-ci.org/sleimanx2/plastic) [![StyleCI](https://styleci.io/repos/58264395/shield)](https://styleci.io/repos/58264395)
+[![License](https://poser.pugx.org/laravel/framework/license.svg)](https://packagist.org/packages/lordfm/plastic) [![Build Status](https://travis-ci.org/lordfm/plastic.svg?branch=master&&refresh=2)](https://travis-ci.org/lordfm/plastic) [![StyleCI](https://styleci.io/repos/58264395/shield)](https://styleci.io/repos/58264395)
 
 > This package is still under active development and may change.
 
@@ -11,13 +14,13 @@
 # Installing Plastic
 
 ```bash
-composer require sleimanx2/plastic
+composer require lordfm/plastic
 ```
 
 If you are using **Laravel >=5.5** the service provider will be **automatically discovered** otherwise we need to add the plastic service provider to `config/app.php` under the providers key:
 
 ```php
-Sleimanx2\Plastic\PlasticServiceProvider::class
+LoRDFM\Plastic\PlasticServiceProvider::class
 ```
 
 Finally we need to run:
@@ -41,10 +44,10 @@ This will create a config file at `config/plastic.php` and a mapping directory a
 
 ## [Defining Searchable Models]()
 
-To get started, enable searching capabilities in your model by adding the `Sleimanx2\Plastic\Searchable` trait:
+To get started, enable searching capabilities in your model by adding the `LoRDFM\Plastic\Searchable` trait:
 
 ```php
-use Sleimanx2\Plastic\Searchable;
+use LoRDFM\Plastic\Searchable;
 
 class Book extends Model
 {
@@ -259,8 +262,8 @@ A mapping class contains a single method `map`. The map method is used to map th
 Within the `map` method you may use the Plastic Map builder to expressively create field maps. For example, let's look at a sample mapping that creates a Tag model map:
 
 ```php
-use Sleimanx2\Plastic\Map\Blueprint;
-use Sleimanx2\Plastic\Mappings\Mapping;
+use LoRDFM\Plastic\Map\Blueprint;
+use LoRDFM\Plastic\Mappings\Mapping;
 
 class AppTag extends Mapping
 {
