@@ -1,21 +1,29 @@
 ![Plastic Logo](http://i.imgur.com/PyolY7g.png)
 
+> Forked from sleimanx2/plastic
+
+> This is just a fork to address a PlasticPaginator bug in v0.3.1 solved in latest versions but only for PHP >= 7.0.0.
+
+> Intended to be used in PHP 5.6.* and keep adding functionality of latest versions for older versions PHP and ElasticSearch.
+
 > Plastic is an Elasticsearch ODM and mapper for Laravel. It renders the developer experience more enjoyable while using Elasticsearch, by providing a fluent syntax for mapping, querying, and storing eloquent models.
 
-[![License](https://poser.pugx.org/laravel/framework/license.svg)](https://packagist.org/packages/sleimanx2/plastic) [![Build Status](https://travis-ci.org/sleimanx2/plastic.svg?branch=master&&refresh=2)](https://travis-ci.org/sleimanx2/plastic) [![StyleCI](https://styleci.io/repos/58264395/shield)](https://styleci.io/repos/58264395)
+[![License](https://poser.pugx.org/laravel/framework/license.svg)](https://packagist.org/packages/lordfm/plastic) [![Build Status](https://travis-ci.org/lordfm/plastic.svg?branch=master&&refresh=2)](https://travis-ci.org/lordfm/plastic) [![StyleCI](https://styleci.io/repos/58264395/shield)](https://styleci.io/repos/58264395)
 
 > This package is still under active development and may change.
+
+> For Elasticsearch v2 please refer to version < 0.4.0.
 
 # Installing Plastic
 
 ```bash
-composer require sleimanx2/plastic
+composer require lordfm/plastic
 ```
 
-Then we need to add the plastic service provider to `config/app.php` under the providers key:
+If you are using **Laravel >=5.5** the service provider will be **automatically discovered** otherwise we need to add the plastic service provider to `config/app.php` under the providers key:
 
 ```php
-Sleimanx2\Plastic\PlasticServiceProvider::class
+LoRDFM\Plastic\PlasticServiceProvider::class
 ```
 
 Finally we need to run:
@@ -34,14 +42,15 @@ This will create a config file at `config/plastic.php` and a mapping directory a
 - [Aggregation](#aggregation)
 - [Suggestions](#suggestions)
 - [Mappings](#mappings)
+- [Populate An Index](#populate-an-index)
 - [Access The Client](#access-client)
 
 ## [Defining Searchable Models]()
 
-To get started, enable searching capabilities in your model by adding the `Sleimanx2\Plastic\Searchable` trait:
+To get started, enable searching capabilities in your model by adding the `LoRDFM\Plastic\Searchable` trait:
 
 ```php
-use Sleimanx2\Plastic\Searchable;
+use LoRDFM\Plastic\Searchable;
 
 class Book extends Model
 {
@@ -179,7 +188,7 @@ User::search()
     ->must()
         ->term('name','kimchy')
     ->mustNot()
-        ->range('age',['from'=>10,'to'=>20]);
+        ->range('age',['from'=>10,'to'=>20])
     ->should()
         ->match('bio','developer')
         ->match('bio','elastic')
@@ -256,8 +265,8 @@ A mapping class contains a single method `map`. The map method is used to map th
 Within the `map` method you may use the Plastic Map builder to expressively create field maps. For example, let's look at a sample mapping that creates a Tag model map:
 
 ```php
-use Sleimanx2\Plastic\Map\Blueprint;
-use Sleimanx2\Plastic\Mappings\Mapping;
+use LoRDFM\Plastic\Map\Blueprint;
+use LoRDFM\Plastic\Mappings\Mapping;
 
 class AppTag extends Mapping
 {
@@ -314,6 +323,35 @@ You can always create a new Elasticsearch index and re-run the mappings. After r
 Its recommended to create your Elasticsearch index with an alias to ease the process of updating your model mappings with zero downtime. To learn more check out:
 
 <https://www.elastic.co/blog/changing-mapping-with-zero-downtime>
+
+## [Populate An Index]()
+
+Populating an index with searchable models can be done by running an Artisan console command :
+
+```bash
+php artisan plastic:populate [--mappings][--index=...][--database=...]
+```
+
+- `--mappings` Create the models mappings before populating the index
+- `--database=...` Database connection to use for mappings instead of the default one
+- `--index=...` Index to populate instead of the default one
+
+The list of models from which to recreate the documents has to be configured **per index** in `config/plastic.php`:
+```
+    'populate' => [
+        'models' => [
+            // Models for the default index
+            env('PLASTIC_INDEX', 'plastic') => [
+                App\Models\Article::class,
+                App\Models\Page::class,
+            ],
+            // Models for the index "another_index"
+            'another_index' => [
+                App\Models\User::class,
+            ],
+        ],
+    ],
+```
 
 ## [Access The Client]()
 

@@ -4,6 +4,8 @@ namespace Sleimanx2\Plastic\DSL;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Traits\Macroable;
+use ONGR\ElasticsearchDSL\Highlight\Highlight;
+use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
 use ONGR\ElasticsearchDSL\Query\FullText\CommonTermsQuery;
 use ONGR\ElasticsearchDSL\Query\FullText\MatchQuery;
 use ONGR\ElasticsearchDSL\Query\FullText\MultiMatchQuery;
@@ -11,9 +13,9 @@ use ONGR\ElasticsearchDSL\Query\FullText\QueryStringQuery;
 use ONGR\ElasticsearchDSL\Query\FullText\SimpleQueryStringQuery;
 use ONGR\ElasticsearchDSL\Query\Geo\GeoBoundingBoxQuery;
 use ONGR\ElasticsearchDSL\Query\Geo\GeoDistanceQuery;
+use ONGR\ElasticsearchDSL\Query\Geo\GeoDistanceRangeQuery;
 use ONGR\ElasticsearchDSL\Query\Geo\GeoPolygonQuery;
 use ONGR\ElasticsearchDSL\Query\Geo\GeoShapeQuery;
-use ONGR\ElasticsearchDSL\Query\Geo\GeoDistanceRangeQuery;
 use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
 use ONGR\ElasticsearchDSL\Query\MatchAllQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\ExistsQuery;
@@ -82,18 +84,11 @@ class SearchBuilder
     protected $connection;
 
     /**
-     * Query filtering state.
-     *
-     * @var bool
-     */
-    protected $filtering = false;
-
-    /**
      * Query bool state.
      *
      * @var string
      */
-    protected $boolState = 'must';
+    protected $boolState = BoolQuery::MUST;
 
     /**
      * Builder constructor.
@@ -138,7 +133,7 @@ class SearchBuilder
     /**
      * Set the eloquent model to use when querying elastic search.
      *
-     * @param Model $model
+     * @param Model|Searchable $model
      *
      * @throws InvalidArgumentException
      *
@@ -233,7 +228,7 @@ class SearchBuilder
      */
     public function should()
     {
-        $this->boolState = 'should';
+        $this->boolState = BoolQuery::SHOULD;
 
         return $this;
     }
@@ -243,7 +238,7 @@ class SearchBuilder
      */
     public function must()
     {
-        $this->boolState = 'must';
+        $this->boolState = BoolQuery::MUST;
 
         return $this;
     }
@@ -253,7 +248,7 @@ class SearchBuilder
      */
     public function mustNot()
     {
-        $this->boolState = 'must_not';
+        $this->boolState = BoolQuery::MUST_NOT;
 
         return $this;
     }
@@ -263,17 +258,7 @@ class SearchBuilder
      */
     public function filter()
     {
-        $this->filtering = true;
-
-        return $this;
-    }
-
-    /**
-     * Switch to a regular query.
-     */
-    public function query()
-    {
-        $this->filtering = false;
+        $this->boolState = BoolQuery::FILTER;
 
         return $this;
     }
@@ -575,6 +560,36 @@ class SearchBuilder
     }
 
     /**
+     * Add a highlight to result.
+     *
+     * @param array  $fields
+     * @param array  $parameters
+     * @param string $preTag
+     * @param string $postTag
+     *
+     * @see https://www.elastic.co/guide/en/elasticsearch/reference/current/search-request-highlighting.html
+     *
+     * @return $this
+     */
+    public function highlight($fields = ['_all' => []], $parameters = [], $preTag = '<mark>', $postTag = '</mark>')
+    {
+        $highlight = new Highlight();
+        $highlight->setTags([$preTag], [$postTag]);
+
+        foreach ($fields as $field => $fieldParams) {
+            $highlight->addField($field, $fieldParams);
+        }
+
+        if ($parameters) {
+            $highlight->setParameters($parameters);
+        }
+
+        $this->query->addHighlight($highlight);
+
+        return $this;
+    }
+
+    /**
      * Add a range query.
      *
      * @param string $field
@@ -685,6 +700,29 @@ class SearchBuilder
     }
 
     /**
+     * Add function score.
+     *
+     * @param \Closure $search
+     * @param \Closure $closure
+     * @param array    $parameters
+     *
+     * @return $this
+     */
+    public function functions(\Closure $search, \Closure $closure, $parameters = [])
+    {
+        $builder = new self($this->connection, new $this->query());
+        $search($builder);
+
+        $builder = new FunctionScoreBuilder($builder, $parameters);
+
+        $closure($builder);
+
+        $this->append($builder->getQuery());
+
+        return $this;
+    }
+
+    /**
      * Set the model filler to use after retrieving the results.
      *
      * @param FillerInterface $filler
@@ -779,25 +817,16 @@ class SearchBuilder
     }
 
     /**
-     * Return the filtering state.
-     *
-     * @return string
-     */
-    public function getFilteringState()
-    {
-        return $this->filtering;
-    }
-
-    /**
      * Paginate result hits.
      *
-     * @param int $limit
+     * @param int      $limit
+     * @param null|int $current
      *
      * @return PlasticPaginator
      */
-    public function paginate($limit = 25)
+    public function paginate($limit = 25, $current = null)
     {
-        $page = $this->getCurrentPage();
+        $page = $this->getCurrentPage($current);
 
         $from = $limit * ($page - 1);
         $size = $limit;
@@ -826,11 +855,7 @@ class SearchBuilder
      */
     public function append($query)
     {
-        if ($this->getFilteringState()) {
-            $this->query->addFilter($query, $this->getBoolState());
-        } else {
-            $this->query->addQuery($query, $this->getBoolState());
-        }
+        $this->query->addQuery($query, $this->getBoolState());
 
         return $this;
     }
@@ -838,10 +863,12 @@ class SearchBuilder
     /**
      * return the current query string value.
      *
+     * @param null|int $current
+     *
      * @return int
      */
-    protected function getCurrentPage()
+    protected function getCurrentPage($current)
     {
-        return \Request::get('page') ? (int) \Request::get('page') : 1;
+        return $current ?: (int) \Request::get('page', 1);
     }
 }
