@@ -1,9 +1,9 @@
 {
-  "name": "LoRDFM/plastic",
+  "name": "lordfm/plastic",
   "license": "MIT",
   "description": "Plastic is an Elasticsearch ODM and mapper for Laravel. It renders the developer experience more enjoyable while using Elasticsearch by providing a fluent syntax for mapping , querying and storing eloquent models.",
   "keywords": ["elasticsearch","elastic","laravel","eloquent","model","ODM","mapper"],
-  "homepage": "https://github.com/LoRDFM/plastic",
+  "homepage": "https://github.com/lorduriel/plastic",
   "authors": [
     {
       "name": "Sleiman Sleiman",
