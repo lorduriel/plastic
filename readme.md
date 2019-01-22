@@ -17,7 +17,7 @@
 # Installing Plastic
 
 ```bash
-composer require lordfm/plastic
+composer require lordfm/plastic=v0.3.1
 ```
 
 If you are using **Laravel >=5.5** the service provider will be **automatically discovered** otherwise we need to add the plastic service provider to `config/app.php` under the providers key:
